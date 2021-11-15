@@ -6,7 +6,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
-
+from matplotlib.ticker import StrMethodFormatter
 
 
 class plotting:
@@ -49,10 +49,27 @@ class plotting:
                                   colors=('darkgrey',),
                                   linewidths=(1,))
         return ax
+    
+    def plot3d(self, model):
+        fig, ax = plt.subplots(figsize = (15,20),subplot_kw={"projection": "3d"})
+        surf = ax.plot_surface(self.mesh()[0], self.mesh()[1], self.fix_to_mesh(model)[0],
+                            cmap=cm.coolwarm,
+                            linewidth=0,
+                            antialiased=True)                        
+        plt.gca().zaxis.set_major_formatter(StrMethodFormatter('{x:,.4f}'))
+        ax.set_xlabel('x [m]')
+        ax.set_ylabel('y [m]')
+        ax.set_zlabel('drawdown [m]')
+        fig.colorbar(surf, shrink=.8, ax=[ax], location = "left") 
+        return ax
+    
+#%%
+        
 
 plot=plotting(0,0,150,150,100)
 plotmesh=plot.fix_to_mesh(aem_model)
 plot2dmodel=plot.plot2d(aem_model, 10)
+plot3dmodel=plot.plot3d(aem_model)
 
 
 
