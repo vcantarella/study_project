@@ -45,7 +45,7 @@ class plotting:
         plt.rcParams['contour.negative_linestyle'] = 'solid'
         fig2.colorbar(contour, ax=ax, shrink=0.9)
         contour_psi = plt.contour(self.mesh()[0], self.mesh()[1],self.fix_to_mesh(model)[1],
-                                  levels,
+                                  int(levels/3),
                                   colors=('darkgrey',),
                                   linewidths=(1,))
         return ax
@@ -68,7 +68,7 @@ class plotting:
 
 plot=plotting(0,0,150,150,100)
 plotmesh=plot.fix_to_mesh(aem_model)
-plot2dmodel=plot.plot2d(aem_model, 10)
+plot2dmodel=plot.plot2d(aem_model, 30)
 plot3dmodel=plot.plot3d(aem_model)
 
 

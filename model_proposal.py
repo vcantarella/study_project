@@ -63,7 +63,7 @@ class Model:
                                      'Discharge': [],
                                      'X': [],
                                      'Y': []})
-        self.Qo_x = 1e-2
+        self.Qo_x = 1e-2  #Baseflow in the x direction 
         if river is None:
             # If undeclared river line equation will be assumed to be located at the y-axis
             self.river_a = 1
