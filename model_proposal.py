@@ -63,7 +63,7 @@ class Model:
                                      'Discharge': [],
                                      'X': [],
                                      'Y': []})
-        self.Qo_x = 1e-2  #Baseflow in the x direction 
+        self.Qo_x = 1  #Baseflow in the x direction 
         if river is None:
             # If undeclared river line equation will be assumed to be located at the y-axis
             self.river_a = 1
@@ -98,11 +98,11 @@ class Model:
         for element in self.aem_elements:
             d = np.abs(self.river_a *element.x + self.river_b*element.y + self.river_c)/np.sqrt(self.river_a**2+ self.river_b**2)
             if (x == element.x):
-                phi_q = phi_q = (element.Q/(2*np.pi))*np.log((np.sqrt(x+element.rw -element.x)**2 + (y-element.y)**2)/np.sqrt((x+element.rw-(element.x-2*d))**2+(y-element.y)**2))
+                phi_q = phi_q = (element.Q/(4*np.pi))*np.log(((x+element.rw -element.x)**2 + (y-element.y)**2)/((x+element.rw-(element.x-2*d))**2+(y-element.y)**2))
             elif (y == element.y):
-                phi_q = phi_q = (element.Q/(2*np.pi))*np.log(np.sqrt((x - element.x)**2 + (y+element.rw-element.y)**2)/np.sqrt((x-(element.x - 2*d))**2+(y+element.rw-element.y)**2))
+                phi_q = phi_q = (element.Q/(4*np.pi))*np.log(((x - element.x)**2 + (y+element.rw-element.y)**2)/((x-(element.x - 2*d))**2+(y+element.rw-element.y)**2))
             else:
-                phi_q = (element.Q/(2*np.pi))*np.log(np.sqrt((x - element.x)**2 + (y-element.y)**2)/np.sqrt((x-(element.x - 2*d))**2+(y-element.y)**2))
+                phi_q = (element.Q/(4*np.pi))*np.log(((x - element.x)**2 + (y-element.y)**2)/((x-(element.x - 2*d))**2+(y-element.y)**2))
             phi_well += phi_q
         phi_base = self.Qo_x*x
         return self.phi0 + phi_well + phi_base

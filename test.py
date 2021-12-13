@@ -51,6 +51,8 @@ contour_psi = plt.contour(xvec,yvec,psi,
                           colors=('darkgrey',),
                           linewidths=(2,))
 
+
+
 ## Add NEW WELL:
     
 well2 = model_proposal.Well(aem_model, Q = 200, rw = 0.2, x = 10, y = 30)
