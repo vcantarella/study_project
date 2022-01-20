@@ -68,7 +68,7 @@ contour_psi_river = plt.contour(xvec,yvec,psi,
 river_line = plt.plot([0,0],[np.min(yvec),np.max(yvec)], color = 'blue', linestyle = '-', linewidth = 16)
 river_capture = plt.plot([0, 0], [riv_coords[0], riv_coords[1]], color='r', linestyle='-', linewidth=8)
 
-tt = solv.time_travel(0.2)
+tt = solv.time_travel(0.3)
 print("Time of Travel: ")
 print(tt)
 ### Example 0: Multiple Wells:
