@@ -84,3 +84,12 @@ contour_psi = plt.contour(xvec,yvec,psi,
                           10,
                           colors=('darkgrey',),
                           linewidths=(2,))
+
+
+#%%
+from plot import *
+length, riv_coords, capture_fraction = solv.solve_river_length()
+plot=plotting(0,150,riv_coords,100)
+plotmesh=plot.fix_to_mesh(aem_model)
+plot2dmodel=plot.plot2d(aem_model, 30)
+plot3dmodel=plot.plot3d(aem_model)
