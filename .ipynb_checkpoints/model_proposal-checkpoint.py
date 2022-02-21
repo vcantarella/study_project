@@ -54,7 +54,7 @@ class Model:
     y_ref : y-coordinate of the reference location
     
     """
-    def __init__(self, k, H, h0, river = None, x_ref = 500, y_ref = 500):
+    def __init__(self, k, H, h0, river = None, x_ref = 0, y_ref = 0):
         self.k = k
         self.H = H
         self.h0 = h0
@@ -63,7 +63,7 @@ class Model:
                                      'Discharge': [],
                                      'X': [],
                                      'Y': []})
-        self.Qo_x = 1  #Baseflow in the x direction 
+        self.Qo_x = -1  #Baseflow in the x direction 
         if river is None:
             # If undeclared river line equation will be assumed to be located at the y-axis
             self.river_a = 1
@@ -104,7 +104,7 @@ class Model:
             else:
                 phi_q = (element.Q/(4*np.pi))*np.log(((x - element.x)**2 + (y-element.y)**2)/((x-(element.x - 2*d))**2+(y-element.y)**2))
             phi_well += phi_q
-        phi_base = self.Qo_x*x
+        phi_base = -self.Qo_x*x
         return self.phi0 + phi_well + phi_base
     
     def calc_head(self,x,y):
@@ -154,7 +154,7 @@ class Model:
             else:
                 psi_q = (element.Q/(2*np.pi))*(np.arctan2((y-element.y),(x-element.x))- np.arctan2((y-element.y),(x-(element.x-2*d))))
             psi_well += psi_q
-        psi_base = self.Qo_x*y
+        psi_base = -self.Qo_x*y
         psi = psi_well+psi_base
         
         
@@ -178,14 +178,6 @@ class Well:
         self.rw = rw
         model.aem_elements.append(self)
 
-
-
-aem_model = Model(k = 10, H = 20, h0 = 18)
-
-well = Well(aem_model, Q = 10, rw = 0.2, x = 30, y = 50)
-
-
-print(aem_model.calc_psi(225, 0))
 
 
 

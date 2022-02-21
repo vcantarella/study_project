@@ -180,4 +180,12 @@ class Well:
 
 
 
+aem_model = Model(k = 10, H = 20, h0 = 18)
+
+well = Well(aem_model, Q = 10, rw = 0.2, x = 30, y = 50)
+
+
+print(aem_model.calc_psi(225, 0))
+
+
 

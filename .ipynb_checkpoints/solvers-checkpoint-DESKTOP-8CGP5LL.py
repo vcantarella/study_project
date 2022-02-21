@@ -9,9 +9,7 @@ Current implementations:
         This is the length of the river intercepted by the rbf well
     - Stream flow contribution:
         This is the percentage of the pumping discharge that comes from river water.
-    - Travel time:
-        Calculate the travel time of particles that infiltrate from the river to the well.
-        
+    
 Limitations:
     - Streams must be located in the y-axis
     - Only one well allowed, located in the positive x,y quadrant
@@ -93,25 +91,15 @@ class river_length():
             
                 return length,sol_el, contrib
     
-    def time_travel(self, ne, delta_s = 0.1, calculate_trajectory = False):
+    def time_travel(self, ne, delta_s = 0.1):
         """
-        Method to derive the time of travel of selected paths from the river to the well.
-        The algorithm is a numerical integration of the travel paths of 20 sampled particles
-        located at the river intersection.
-        It calculate the travel time of each particle, the flux average travel time and the 
-        minimum travel time.
+        Method to derive the time of travel of selected paths from the river to the well
         
-        Optionally it calculates the particle trajectories, although that is not an efficient algorithm
         
-        Requires:
-        Successful run of the solve river length method
 
         Returns
         -------
-        tt: time of travel array : numpy array, dimensions: (length of river capture length,1)
-        ys: y position array: numpy array with the river y position of the start of the particle
-        avgtt (float): flux averaged time of travel calculated as: sum(t_x*qx)/sum(qx)
-        mintt (float): minimum time of travel (min(tt))
+        time of travel array : numpy array, dimensions: (length of river capture length,1)
 
         """
         
@@ -121,8 +109,6 @@ class river_length():
         #print(ys.shape)
         xs = np.repeat(0.1,ys.shape[0])
         tt = []
-        if calculate_trajectory:
-            traj_array = []
         
         '''
         initial parameters from the model:
@@ -140,30 +126,13 @@ class river_length():
         general qx, qy formulas (general potential)
         '''
         def qx(x,y, Q, Qx, xw, yw, d):
-            
-            #Checking if confined or unconfined: (improv. possible)
-            if self.model.calc_head(x,y) > self.model.H:
-                z = H
-            else:
-                z = self.model.calc_head(x,y)
-            
-            #Specific discharge calculation
-            return -1*(-Qx + Q/(4*np.pi)*((2*(x-xw)/((x-xw)**2+(y-yw)**2))-(2*(x-(xw-2*d)))/((x-(xw-2*d))**2+(y-yw)**2)))/z
+            return -1*(-Qx + Q/(4*np.pi)*((2*(x-xw)/((x-xw)**2+(y-yw)**2))-(2*(x-(xw-2*d)))/((x-(xw-2*d))**2+(y-yw)**2)))/self.model.calc_head(x,y)
         
         def qy(x,y, Q, Qx, xw, yw, d):
-            
-            #Checking if confined or unconfined:
-            if self.model.calc_head(x,y) > self.model.H:
-                z = H
-            else:
-                z = self.model.calc_head(x,y)
-            
-            #Specific discharge calculation
-            return -1*(Q/(4*np.pi)*((2*(y-yw)/((x-xw)**2+(y-yw)**2))-(2*(y-yw))/((x-(xw-2*d))**2+(y-yw)**2)))/z
+            return -1*(Q/(4*np.pi)*((2*(y-yw)/((x-xw)**2+(y-yw)**2))-(2*(y-yw))/((x-(xw-2*d))**2+(y-yw)**2)))/self.model.calc_head(x,y)
         
         '''
         Formulas for correction of the trajectory (stream function)
-        (This has to be improved to a more general case...)
         '''
         def equation_x(x_a, psi, y_2, Q, Qx, xw, yw, d):
                     return -Qx*y_2 + (Q/(2*np.pi))*(np.arctan2((y_2-yw),(x_a-xw))- np.arctan2((y_2-yw),(x_a-(xw-2*d))))-psi
@@ -174,13 +143,6 @@ class river_length():
         calculation of streamline and time of travel
         '''
         for x,y in zip(xs,ys):
-            
-            # Starting the trajectory arrays if necessary:
-            if calculate_trajectory:
-                xss = []
-                xss.append(x)
-                yss = []
-                yss.append(y)
             
             #dis_arr = []
             #v_arr = []
@@ -241,10 +203,6 @@ class river_length():
                 #Looping
                 x1 = x_2
                 y1 = y_2
-                
-                if calculate_trajectory:
-                    xss.append(x1)
-                    yss.append(y1)
                 #dista_2 = np.sqrt((x1-xw)**2+(y1-yw)**2)
                 #if dista_2 > dista1:
                 #    breakin_dists.append(dista_2)
@@ -254,42 +212,9 @@ class river_length():
             #dis_arr = np.array(dis_arr)
             #v_arr = np.array(v_arr)
             tt.append(np.sum(np.array(t_arr)))
-            
-            # Saving the particle trajectory in a numpy array:
-            if calculate_trajectory:
-                traj_arr = np.vstack((np.array(xss),np.array(yss)))
-                traj_array.append(traj_arr)
-            
             #print("Essa particula CHEGOU!!!")
-        
-        
-        #Return the average travel time:
-        
-        ## Calculate qxs (specific discharges):
-        qs = []
-        for x,y in zip(xs,ys):
-            qx1 = qx(x,y, Q, Qx, xw, yw, d)
-            qy1 = qy(x,y, Q, Qx, xw, yw, d)
-            q = np.sqrt(qx1**2+qy1**2)
-            qs.append(q)
-        
-        qs = np.array(qs)
-        tt = np.array(tt)
-        ## Calulcate average traveltime:
-        avgtt = np.sum(qs*tt)/np.sum(qs)
-        
-        ## Calculate the minimum travel time:
-        mintt = np.min(tt)
-        
-        # If necessary exporto the trajectory also:
-        
-        if calculate_trajectory:
             
-            return tt, ys, avgtt, mintt, traj_array
-        
-        else:
-            
-            return tt, ys, avgtt, mintt
+        return tt#, breakin_dists
 
     
         

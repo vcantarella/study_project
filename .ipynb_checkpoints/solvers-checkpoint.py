@@ -9,7 +9,9 @@ Current implementations:
         This is the length of the river intercepted by the rbf well
     - Stream flow contribution:
         This is the percentage of the pumping discharge that comes from river water.
-    
+    - Travel time:
+        Calculate the travel time of particles that infiltrate from the river to the well.
+        
 Limitations:
     - Streams must be located in the y-axis
     - Only one well allowed, located in the positive x,y quadrant
@@ -20,6 +22,9 @@ import numpy as np
 import sympy
 import itertools
 from scipy.optimize import fsolve
+
+#For the time of travel calculation using ttcrpy package:
+
 
 class river_length():
     """
@@ -55,8 +60,8 @@ class river_length():
         Returns
         -------
         length: river length intercepted by the well
-        location of the river legnth (y-coordinates of the intercepted river length)
-        contribution of river-water to discharge: the percentage of the pumping-rate that comes from river water (the rest is aquifer water)
+        sol_el: location of the river legnth (y-coordinates of the intercepted river length)
+        contrib: contribution of river-water to discharge: the percentage of the pumping-rate that comes from river water (the rest is aquifer water)
 
         """
         if (len(self.model.aem_elements) > 1) | (len(self.model.aem_elements) == 0):
@@ -69,7 +74,7 @@ class river_length():
             xw = elem.x
             yw = elem.y
             d = np.abs(self.model.river_a *xw + self.model.river_b*yw + self.model.river_c)/np.sqrt(self.model.river_a**2+ self.model.river_b**2)
-            Qx = self.model.Qo_x
+            Qx = -self.model.Qo_x
       
             ## Checking if stagnation points exists for the solution:
             ex_st_points = Q/(np.pi*d*Qx)
@@ -87,24 +92,37 @@ class river_length():
                 contrib = Q_river/Q
             
                 return length,sol_el, contrib
-    def time_travel(self, ne, delta_s = 0.1):
+    
+    def time_travel(self, ne, delta_s = 0.1, calculate_trajectory = False):
         """
-        Method to derive the time of travel of selected paths from the river to the well
+        Method to derive the time of travel of selected paths from the river to the well.
+        The algorithm is a numerical integration of the travel paths of 20 sampled particles
+        located at the river intersection.
+        It calculate the travel time of each particle, the flux average travel time and the 
+        minimum travel time.
         
+        Optionally it calculates the particle trajectories, although that is not an efficient algorithm
         
+        Requires:
+        Successful run of the solve river length method
 
         Returns
         -------
-        time of travel array : numpy array, dimensions: (length of river capture length,1)
+        tt: time of travel array : numpy array, dimensions: (length of river capture length,1)
+        ys: y position array: numpy array with the river y position of the start of the particle
+        avgtt (float): flux averaged time of travel calculated as: sum(t_x*qx)/sum(qx)
+        mintt (float): minimum time of travel (min(tt))
 
         """
         
         length, sol_el, contrib = self.solve_river_length()
         
-        ys = np.linspace(sol_el[0]+0.1,sol_el[1]-0.1,int(sol_el[1]-sol_el[0]-1))
+        ys = np.linspace(sol_el[0]+0.1,sol_el[1]-0.1,20)
         #print(ys.shape)
         xs = np.repeat(0.1,ys.shape[0])
         tt = []
+        if calculate_trajectory:
+            traj_array = []
         
         '''
         initial parameters from the model:
@@ -121,24 +139,48 @@ class river_length():
         '''
         general qx, qy formulas (general potential)
         '''
-        def qx(x,y):
-            return -1*(-Qx + Q/(4*np.pi)*((2*(x-xw)/((x-xw)**2+(y-yw)**2))-(2*(x-(xw-2*d)))/((x-(xw-2*d))**2+(y-yw)**2)))/self.model.calc_head(x, y)
+        def qx(x,y, Q, Qx, xw, yw, d):
+            
+            #Checking if confined or unconfined: (improv. possible)
+            if self.model.calc_head(x,y) > self.model.H:
+                z = H
+            else:
+                z = self.model.calc_head(x,y)
+            
+            #Specific discharge calculation
+            return -1*(-Qx + Q/(4*np.pi)*((2*(x-xw)/((x-xw)**2+(y-yw)**2))-(2*(x-(xw-2*d)))/((x-(xw-2*d))**2+(y-yw)**2)))/z
         
-        def qy(x,y):
-            return -1*(Q/(4*np.pi)*((2*(y-yw)/((x-xw)**2+(y-yw)**2))-(2*(y-yw))/((x-(xw-2*d))**2+(y-yw)**2)))/self.model.calc_head(x, y)
+        def qy(x,y, Q, Qx, xw, yw, d):
+            
+            #Checking if confined or unconfined:
+            if self.model.calc_head(x,y) > self.model.H:
+                z = H
+            else:
+                z = self.model.calc_head(x,y)
+            
+            #Specific discharge calculation
+            return -1*(Q/(4*np.pi)*((2*(y-yw)/((x-xw)**2+(y-yw)**2))-(2*(y-yw))/((x-(xw-2*d))**2+(y-yw)**2)))/z
         
         '''
         Formulas for correction of the trajectory (stream function)
+        (This has to be improved to a more general case...)
         '''
-        def equation_x(x_a, psi):
-                    return Qx*y_2 + (Q/(2*np.pi))*(np.arctan2((y_2-yw),(x_a-xw))- np.arctan2((y_2-yw),(x_a-(xw-2*d))))-psi
+        def equation_x(x_a, psi, y_2, Q, Qx, xw, yw, d):
+                    return -Qx*y_2 + (Q/(2*np.pi))*(np.arctan2((y_2-yw),(x_a-xw))- np.arctan2((y_2-yw),(x_a-(xw-2*d))))-psi
         
-        def equation_y(y_a, psi) :
-                    return Qx*y_a + (Q/(2*np.pi))*(np.arctan2((y_a-yw),(x_2-xw))- np.arctan2((y_a-yw),(x_2-(xw-2*d))))-psi
+        def equation_y(y_a, psi, x_2, Q, Qx, xw, yw, d) :
+                    return -Qx*y_a + (Q/(2*np.pi))*(np.arctan2((y_a-yw),(x_2-xw))- np.arctan2((y_a-yw),(x_2-(xw-2*d))))-psi
         ''' 
         calculation of streamline and time of travel
         '''
         for x,y in zip(xs,ys):
+            
+            # Starting the trajectory arrays if necessary:
+            if calculate_trajectory:
+                xss = []
+                xss.append(x)
+                yss = []
+                yss.append(y)
             
             #dis_arr = []
             #v_arr = []
@@ -152,8 +194,8 @@ class river_length():
                 dista1 = np.sqrt((x1-xw)**2+(y1-yw)**2)
                 #print(x1)
                 #print(y1)
-                qx1 = qx(x1,y1)
-                qy1 = qy(x1,y1)
+                qx1 = qx(x1,y1, Q, Qx, xw, yw, d)
+                qy1 = qy(x1,y1, Q, Qx, xw, yw, d)
                 vx = qx1/ne
                 vy = qy1/ne
                 v_i = np.sqrt(vx**2+vy**2)
@@ -161,67 +203,97 @@ class river_length():
                 
                 #Part 2: estimating second point
                 
-                x_2 = np.float(x1 + delta_s*vx/v_i)
+                
                 y_2 = np.float(y1 + delta_s*vy/v_i)
+                x_2 = np.float(x1 + delta_s*vx/v_i)
                 
+                ## correcting the point location based on the psi value:
                 
+                if vx > vy :
+                    sols_y = fsolve(equation_y, y_2, (psi, x_2, Q, Qx, xw, yw, d))
+                    sol_el_y = sols_y[0]
+                    y_2 = sol_el_y
+                else:
+                    sols = fsolve(equation_x, x_2, (psi, y_2, Q, Qx, xw, yw, d))
+                    sol_el_x = sols[0]
+                    x_2 = sol_el_x
                 
+                ## Calculating distance:
+                dist = np.sqrt((x_2-x1)**2+(y_2-y1)**2)
                 
-                ## Adjust for psi:
-                #x_a = sympy.symbols('x_a')
-                #y_a = sympy.symbols('y_a')
+                # Calculating velocities for the second point:
                 
-                sols = fsolve(equation_x, x_2, (psi))
-                sol_el_x = sols[0]
+                qx2 = qx(x_2,y_2, Q, Qx, xw, yw, d)
+                qy2 = qy(x_2,y_2, Q, Qx, xw, yw, d)
+                vx2 = qx2/ne
+                vy2 = qy2/ne
                 
+                # Calculating mean velocity: 
                 
-                sols_y = fsolve(equation_y, y_2, (psi))
-                sol_el_y = sols_y[0]
+                vxm = np.mean([vx,vx2])
+                vym = np.mean([vy,vy2])
                 
-                pos_locs_y = [(sol_el_x,y_2)]
-                pos_locs_x = [(x_2,sol_el_y)]
-                pos_locs = pos_locs_x + pos_locs_y
-
-                dista = 1e9 #Initial distance to be updated in the loop
-                #print(pos_locs)
-                #Calculating distance and correcting second point:
-                for xp,yp in pos_locs:
-                    dist = np.sqrt((xp-x1)**2+(yp-y1)**2)
-                    if dist < dista:
-                        x_2 = xp
-                        y_2 = yp
-                        dista = dist #Distance updated with new point
-                #dis_arr.append(dista)
-                #print('distancia da particula:')
-                #print(np.sqrt((x1-xw)**2+(y1-yw)**2))
+                vm = np.sqrt(vxm**2+vym**2)
+                
+                #Calculating time of travel of the particle (deltaS/deltaV) and appending to array:
+                t_arr.append(dist/vm)
+                
                 #Looping
                 x1 = x_2
                 y1 = y_2
-                dista_2 = np.sqrt((x1-xw)**2+(y1-yw)**2)
-                if dista_2 > dista1:
-                    breakin_dists.append(dista_2)
-                    break
-                    
-                qx2 = qx(x_2,y_2)
-                qy2 = qy(x_2,y_2)
-                vx2 = qx2/ne
-                vy2 = qy2/ne
-                               
-                v_i2 = np.sqrt(vx2**2+vy2**2)
-                logv = np.log(v_i2/v_i)
-                A = (v_i2-v_i)/dista
-                t_arr.append((1/A)*logv)
+                
+                if calculate_trajectory:
+                    xss.append(x1)
+                    yss.append(y1)
+                #dista_2 = np.sqrt((x1-xw)**2+(y1-yw)**2)
+                #if dista_2 > dista1:
+                #    breakin_dists.append(dista_2)
+                #    break
             
             #Adding time of travel estimate
             #dis_arr = np.array(dis_arr)
             #v_arr = np.array(v_arr)
             tt.append(np.sum(np.array(t_arr)))
+            
+            # Saving the particle trajectory in a numpy array:
+            if calculate_trajectory:
+                traj_arr = np.vstack((np.array(xss),np.array(yss)))
+                traj_array.append(traj_arr)
+            
             #print("Essa particula CHEGOU!!!")
+        
+        
+        #Return the average travel time:
+        
+        ## Calculate qxs (specific discharges):
+        qs = []
+        for x,y in zip(xs,ys):
+            qx1 = qx(x,y, Q, Qx, xw, yw, d)
+            qy1 = qy(x,y, Q, Qx, xw, yw, d)
+            q = np.sqrt(qx1**2+qy1**2)
+            qs.append(q)
+        
+        qs = np.array(qs)
+        tt = np.array(tt)
+        ## Calulcate average traveltime:
+        avgtt = np.sum(qs*tt)/np.sum(qs)
+        
+        ## Calculate the minimum travel time:
+        mintt = np.min(tt)
+        
+        # If necessary exporto the trajectory also:
+        
+        if calculate_trajectory:
             
-        return tt#, breakin_dists
+            return tt, ys, avgtt, mintt, traj_array
+        
+        else:
             
-            
-            
+            return tt, ys, avgtt, mintt
+
+    
+        
+        
                 
             
             
