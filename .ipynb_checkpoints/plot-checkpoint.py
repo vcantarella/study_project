@@ -20,11 +20,11 @@ class plotting:
     river coordinates = [riv y-min, riv y-max],
     steps
     """
-    def __init__(self,xmin, xmax, riv_coords, steps):
+    def __init__(self,xmin, xmax, ymin, ymax, steps, riv_coords = None):
         self.xmin=xmin
-        self.ymin=riv_coords[0]-int(0.9*riv_coords[0])
+        self.ymin=ymin
         self.xmax=xmax
-        self.ymax=riv_coords[1]+int(0.9*riv_coords[0])
+        self.ymax=ymax
         self.steps=steps
         self.riv_coords=riv_coords
         
@@ -69,11 +69,6 @@ class plotting:
         h=self.fix_to_mesh(model)[0]
         psi=self.fix_to_mesh(model)[1]
         
-        # Calculating limiting psi cases:
-        
-        psi_riv0= model.calc_psi(0.1, self.riv_coords[0])
-        psi_riv1= model.calc_psi(0.1, self.riv_coords[1])
-        
         # Calculating gradients for quiver: 
         dy, dx = np.gradient(-h)
         e=1
@@ -109,7 +104,8 @@ class plotting:
         
         ax[1].plot([0,0],[np.min(self.mesh()[1]),np.max(self.mesh()[1])], 
                    color = '#4169e1', linestyle = '-', linewidth = 20) #river line
-        ax[1].plot([0, 0], [self.riv_coords[0], self.riv_coords[1]], 
+        if self.riv_coords is not None:
+            ax[1].plot([0, 0], [self.riv_coords[0], self.riv_coords[1]], 
                    color='r', linestyle='-', linewidth=8) #River capture
 
 

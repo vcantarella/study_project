@@ -93,7 +93,7 @@ class river_length():
             
                 return length,sol_el, contrib
     
-    def time_travel(self, ne, delta_s = 0.1, calculate_trajectory = False):
+    def time_travel(self, ne, delta_s = 0.1, calculate_trajectory = False, min_dist_est = 0.1):
         """
         Method to derive the time of travel of selected paths from the river to the well.
         The algorithm is a numerical integration of the travel paths of 20 sampled particles
@@ -112,12 +112,13 @@ class river_length():
         ys: y position array: numpy array with the river y position of the start of the particle
         avgtt (float): flux averaged time of travel calculated as: sum(t_x*qx)/sum(qx)
         mintt (float): minimum time of travel (min(tt))
+        traj_array (list[particle index] of numpy array [2xn]: x[0] and y[1] position of particle in time): trajectory of each particle used for plotting.
 
         """
         
         length, sol_el, contrib = self.solve_river_length()
         
-        ys = np.linspace(sol_el[0]+0.1,sol_el[1]-0.1,20)
+        ys = np.linspace(sol_el[0]+min_dist_est,sol_el[1]-min_dist_est,20)
         #print(ys.shape)
         xs = np.repeat(0.1,ys.shape[0])
         tt = []
@@ -189,7 +190,7 @@ class river_length():
             y1 = y
             psi = self.model.calc_psi(x,y)
             breakin_dists = []
-            while np.sqrt((x1-xw)**2+(y1-yw)**2) > 1*delta_s :
+            while np.sqrt((x1-xw)**2+(y1-yw)**2) > 1.3*delta_s :
                 #Part 1 calculating velocity:
                 dista1 = np.sqrt((x1-xw)**2+(y1-yw)**2)
                 #print(x1)
@@ -210,11 +211,11 @@ class river_length():
                 ## correcting the point location based on the psi value:
                 
                 if vx > vy :
-                    sols_y = fsolve(equation_y, y_2, (psi, x_2, Q, Qx, xw, yw, d))
+                    sols_y = fsolve(equation_y, y_2, (psi, x_2, Q, Qx, xw, yw, d), xtol = 1e-4)
                     sol_el_y = sols_y[0]
                     y_2 = sol_el_y
                 else:
-                    sols = fsolve(equation_x, x_2, (psi, y_2, Q, Qx, xw, yw, d))
+                    sols = fsolve(equation_x, x_2, (psi, y_2, Q, Qx, xw, yw, d), xtol = 1e-4)
                     sol_el_x = sols[0]
                     x_2 = sol_el_x
                 
@@ -290,11 +291,8 @@ class river_length():
         else:
             
             return tt, ys, avgtt, mintt
+        
 
-    
-        
-        
-                
             
             
             
