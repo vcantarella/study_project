@@ -6,22 +6,22 @@ The work has been done under supervision of Dr. Prabhas Yadav.
 
 The model is contained in three scripts:
 
-* [model_proposal.py](https://github.com/vcantarella/study_project/model_proposal.py) : The AEM model framework with the classes and calculation methods for developing a river bank filtration. Description is included in the file. The main methods implemented are:
+* [model_proposal.py](https://github.com/vcantarella/study_project/blob/main/model_proposal.py) : The AEM model framework with the classes and calculation methods for developing a river bank filtration. Description is included in the file. The main methods implemented are:
     - initiate model and add wells
     - calculate potential and stream function
     - calculate aquifer hydraulic heads
-* [solvers.py](https://github.com/vcantarella/study_project/solvers.py) : This script contain the solver class used to calculate the advanced results for River Bank Filtration Assessment. The implemented methods are:
+* [solvers.py](https://github.com/vcantarella/study_project/blob/main/solvers.py) : This script contain the solver class used to calculate the advanced results for River Bank Filtration Assessment. The implemented methods are:
     - calculate river capture length and bank filtrate proportion
     - calculate travel time of particle from the river to the well. this include travel time in multiple locations of the river capture length, minimum travel time and flow averaged travel time.
-* [plot.py](https://github.com/vcantarella/study_project/plot.py): This script contain methods for easy plotting of model results in 2d or 3d.
+* [plot.py](https://github.com/vcantarella/study_project/blob/main/plot.py): This script contain methods for easy plotting of model results in 2d or 3d.
 
 The user is encouraged to check the Jupyter notebooks that contain the results and model validation with MODFLOW:
 
-* [Model Validation](https://github.com/vcantarella/study_project/model_verification.ipynb): Notebook with concurrent implementation of a RBF AEM model and an identical MODFLOW model for validation. Requires flopy and MODFLOW and MODPATH executables.
+* [Model Validation](https://github.com/vcantarella/study_project/blob/main/model_verification.ipynb): Notebook with concurrent implementation of a RBF AEM model and an identical MODFLOW model for validation. Requires flopy and MODFLOW and MODPATH executables.
 
-* [Model Exploration](https://github.com/vcantarella/study_project/model_exploration.ipynb): Notebook with model exploration of variables and results.
+* [Model Exploration](https://github.com/vcantarella/study_project/blob/main/model_exploration.ipynb): Notebook with model exploration of variables and results.
 
-* [Case Studies](https://github.com/vcantarella/study_project/case_studies.ipynb): Notebook with comparison of RBF AEM model results and real world case studies and results (including MODFLOW simulation)
+* [Case Studies](https://github.com/vcantarella/study_project/blob/main/case_studies.ipynb): Notebook with comparison of RBF AEM model results and real world case studies and results (including MODFLOW simulation)
 
 Below we briefly explain how to run a simple RBF model and extract the main results:
 
@@ -163,11 +163,16 @@ length, riv_coords, capture_fraction = solv.solve_river_length()
 #traj_array: x and y location of the calculated trajectory of the particles (used for plotting) 
 tt, ys, avgtt, mintt, traj_array = solv.time_travel(0.2, delta_s = 0.4, calculate_trajectory = True)
 
+print("Flow Averaged Time of Travel: "+str(np.round(avgtt,2)) + " [d]")
+print("Minimum Time of Travel: "+str(np.round(mintt,2)) + " [d]")
+
 
 ```
 
     River Capture Length, Capture position and contribution to discharge is:
     (153.11640342946325, [-26.558201714731624, 126.55820171473162], 0.24929722047129896)
+    Flow Averaged Time of Travel: 716.58 [d]
+    Minimum Time of Travel: 463.1 [d]
     
 
 ## Step 3. Plotting the results with the plot method
@@ -182,19 +187,11 @@ import plot
 img = plot.plotting(0,100,-30,130,100,riv_coords)
 
 # The plot 2d method optionally can contain the trajectory of the sampled particles and their travel time:
-img.plot2d(aem_model, tt=tt, ys = ys, traj_array = traj_array, levels=8, quiver=False, streams=True)
+img.plot2d(aem_model, tt=tt, ys = ys, traj_array = traj_array, levels=8, quiver=False, streams=True);
 ```
 
 
-
-
-    array([<AxesSubplot:xlabel='Travel time - Days', ylabel='y [m]'>,
-           <AxesSubplot:xlabel='x [m]', ylabel='y [m]'>], dtype=object)
-
-
-
-
     
-![png](output_7_1.png)
+![png](output_7_0.png)
     
 
