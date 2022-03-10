@@ -144,7 +144,7 @@ class river_length():
             
             #Checking if confined or unconfined: (improv. possible)
             if self.model.calc_head(x,y) > self.model.H:
-                z = H
+                z = self.model.H
             else:
                 z = self.model.calc_head(x,y)
             
@@ -155,7 +155,7 @@ class river_length():
             
             #Checking if confined or unconfined:
             if self.model.calc_head(x,y) > self.model.H:
-                z = H
+                z = self.model.H
             else:
                 z = self.model.calc_head(x,y)
             
