@@ -141,23 +141,25 @@ class river_length():
         general qx, qy formulas (general potential)
         '''
         def qx(x,y, Q, Qx, xw, yw, d):
+            head = self.model.calc_head(x,y)
             
             #Checking if confined or unconfined: (improv. possible)
-            if self.model.calc_head(x,y) > self.model.H:
+            if head > self.model.H:
                 z = self.model.H
             else:
-                z = self.model.calc_head(x,y)
+                z = head
             
             #Specific discharge calculation
             return -1*(-Qx + Q/(4*np.pi)*((2*(x-xw)/((x-xw)**2+(y-yw)**2))-(2*(x-(xw-2*d)))/((x-(xw-2*d))**2+(y-yw)**2)))/z
         
         def qy(x,y, Q, Qx, xw, yw, d):
+            head = self.model.calc_head(x,y)
             
             #Checking if confined or unconfined:
-            if self.model.calc_head(x,y) > self.model.H:
+            if head > self.model.H:
                 z = self.model.H
             else:
-                z = self.model.calc_head(x,y)
+                z = head
             
             #Specific discharge calculation
             return -1*(Q/(4*np.pi)*((2*(y-yw)/((x-xw)**2+(y-yw)**2))-(2*(y-yw))/((x-(xw-2*d))**2+(y-yw)**2)))/z
@@ -183,14 +185,14 @@ class river_length():
                 yss = []
                 yss.append(y)
             
-            #dis_arr = []
-            #v_arr = []
+            #dis_arr = [] #error checking
+            #v_arr = [] #error checking
             t_arr = []
             x1 = x
             y1 = y
             psi = self.model.calc_psi(x,y)
             breakin_dists = []
-            while np.sqrt((x1-xw)**2+(y1-yw)**2) > 1.3*delta_s :
+            while np.sqrt((x1-xw)**2+(y1-yw)**2) > 5*rw :
                 #Part 1 calculating velocity:
                 dista1 = np.sqrt((x1-xw)**2+(y1-yw)**2)
                 #print(x1)
@@ -207,6 +209,9 @@ class river_length():
                 
                 y_2 = np.float(y1 + delta_s*vy/v_i)
                 x_2 = np.float(x1 + delta_s*vx/v_i)
+                
+                if np.sqrt((x_2-xw)**2+(y_2-yw)**2) < rw:
+                    break
                 
                 ## correcting the point location based on the psi value:
                 
@@ -238,6 +243,8 @@ class river_length():
                 
                 #Calculating time of travel of the particle (deltaS/deltaV) and appending to array:
                 t_arr.append(dist/vm)
+                #dis_arr.append(dist) #error checking
+                #v_arr.append(vm)
                 
                 #Looping
                 x1 = x_2
@@ -246,10 +253,7 @@ class river_length():
                 if calculate_trajectory:
                     xss.append(x1)
                     yss.append(y1)
-                #dista_2 = np.sqrt((x1-xw)**2+(y1-yw)**2)
-                #if dista_2 > dista1:
-                #    breakin_dists.append(dista_2)
-                #    break
+
             
             #Adding time of travel estimate
             #dis_arr = np.array(dis_arr)
@@ -261,8 +265,6 @@ class river_length():
                 traj_arr = np.vstack((np.array(xss),np.array(yss)))
                 traj_array.append(traj_arr)
             
-            #print("Essa particula CHEGOU!!!")
-        
         
         #Return the average travel time:
         

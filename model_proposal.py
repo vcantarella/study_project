@@ -97,10 +97,10 @@ class Model:
         phi_well = 0
         for element in self.aem_elements:
             d = np.abs(self.river_a *element.x + self.river_b*element.y + self.river_c)/np.sqrt(self.river_a**2+ self.river_b**2)
-            if (x == element.x):
-                phi_q = phi_q = (element.Q/(4*np.pi))*np.log(((x+element.rw -element.x)**2 + (y-element.y)**2)/((x+element.rw-(element.x-2*d))**2+(y-element.y)**2))
-            elif (y == element.y):
-                phi_q = phi_q = (element.Q/(4*np.pi))*np.log(((x - element.x)**2 + (y+element.rw-element.y)**2)/((x-(element.x - 2*d))**2+(y+element.rw-element.y)**2))
+            if (np.abs(x - element.x) <= element.rw):
+                phi_q = (element.Q/(4*np.pi))*np.log(((x+element.rw -element.x)**2 + (y-element.y)**2)/((x+element.rw-(element.x-2*d))**2+(y-element.y)**2))
+            elif (np.abs(y - element.y) <= element.rw):
+                phi_q = (element.Q/(4*np.pi))*np.log(((x - element.x)**2 + (y+element.rw-element.y)**2)/((x-(element.x - 2*d))**2+(y+element.rw-element.y)**2))
             else:
                 phi_q = (element.Q/(4*np.pi))*np.log(((x - element.x)**2 + (y-element.y)**2)/((x-(element.x - 2*d))**2+(y-element.y)**2))
             phi_well += phi_q
