@@ -63,7 +63,10 @@ class Model:
                                      'Discharge': [],
                                      'X': [],
                                      'Y': []})
-        self.Qo_x = -1  #Baseflow in the x direction 
+        self.Qo_x = -1  #Baseflow in the x direction
+        self.p = 0 #River clogging factor
+        self.x = x_ref
+        self.y = y_ref
         if river is None:
             # If undeclared river line equation will be assumed to be located at the y-axis
             self.river_a = 1
@@ -74,9 +77,10 @@ class Model:
             self.river_b = river.river_b
             self.river_c = river.river_c
         if self.h0 < self.H:
-            self.phi0 = 0.5 * self.k * self.h0 **2
+            self.phi_c = 0.5 * self.k * self.h0 **2
         else:
-            self.phi0 = self.k * self.H * self.h0 - 0.5 * self.k * self.H **2
+            self.phi_c = self.k * self.H * self.h0 - 0.5 * self.k * self.H **2
+        self.phi0 = self.phi_c
     
     def calc_phi(self, x, y):
         """
@@ -95,14 +99,15 @@ class Model:
         """
         
         phi_well = 0
+        p = self.p
         for element in self.aem_elements:
             d = np.abs(self.river_a *element.x + self.river_b*element.y + self.river_c)/np.sqrt(self.river_a**2+ self.river_b**2)
             if (np.abs(x - element.x) <= element.rw):
-                phi_q = (element.Q/(4*np.pi))*np.log(((x+element.rw -element.x)**2 + (y-element.y)**2)/((x+element.rw-(element.x-2*d))**2+(y-element.y)**2))
+                phi_q = (element.Q/(4*np.pi))*np.log(((x+element.rw -element.x)**2 + (y-element.y)**2)/((x+element.rw-(element.x-2*d- 2*p))**2+(y-element.y)**2))
             elif (np.abs(y - element.y) <= element.rw):
-                phi_q = (element.Q/(4*np.pi))*np.log(((x - element.x)**2 + (y+element.rw-element.y)**2)/((x-(element.x - 2*d))**2+(y+element.rw-element.y)**2))
+                phi_q = (element.Q/(4*np.pi))*np.log(((x - element.x)**2 + (y+element.rw-element.y)**2)/((x-(element.x - 2*d- 2*p))**2+(y+element.rw-element.y)**2))
             else:
-                phi_q = (element.Q/(4*np.pi))*np.log(((x - element.x)**2 + (y-element.y)**2)/((x-(element.x - 2*d))**2+(y-element.y)**2))
+                phi_q = (element.Q/(4*np.pi))*np.log(((x - element.x)**2 + (y-element.y)**2)/((x-(element.x - 2*d - 2*p))**2+(y-element.y)**2))
             phi_well += phi_q
         phi_base = -self.Qo_x*x
         return self.phi0 + phi_well + phi_base
@@ -147,18 +152,57 @@ class Model:
 
         """
         psi_well = 0
+        p = self.p
         for element in self.aem_elements:
             d = np.abs(self.river_a *element.x + self.river_b*element.y + self.river_c)/np.sqrt(self.river_a**2+ self.river_b**2)
             if (x == element.x) & (y == element.y):
-                psi_q = (element.Q/(2*np.pi))*(np.arctan2((y-element.y),(x-(element.x+element.rw)))- np.arctan2((y-element.y),(x-(element.x-2*d))))
+                psi_q = (element.Q/(2*np.pi))*(np.arctan2((y-element.y),(x-(element.x+element.rw)))- np.arctan2((y-element.y),(x-(element.x-2*d- 2*p))))
             else:
-                psi_q = (element.Q/(2*np.pi))*(np.arctan2((y-element.y),(x-element.x))- np.arctan2((y-element.y),(x-(element.x-2*d))))
+                psi_q = (element.Q/(2*np.pi))*(np.arctan2((y-element.y),(x-element.x))- np.arctan2((y-element.y),(x-(element.x-2*d- 2*p))))
             psi_well += psi_q
         psi_base = -self.Qo_x*y
         psi = psi_well+psi_base
         
         
         return psi
+    
+    def calc_clogging(self, Kd,d):
+        """
+        Method to add the clogging effect to the AEM model
+
+        Parameters
+        ----------
+        Kd: a float, with the hydraulic conductivity of the clogging layer [L/T].
+        d: a float, thickness of the clogging layer [L]
+
+        Returns
+        -------
+        internal value of p
+        """
+        self.p = d*self.k/Kd
+        self.x = 0-self.p
+        self.update_phi0()
+        
+    def update_phi0(self):
+        """
+        Method to calculate the discharge potential at the phi0 location
+        - Used to debug and to calculate the discharge potential at any location
+        
+        Parameters
+        ----------
+        None
+
+        Returns (internal)
+        -------
+        phi0, float. The reference discharge potential used in the general phi formula.
+
+        """
+        
+        self.phi0 = 0
+        
+        phi = self.calc_phi(self.x,self.y)
+
+        self.phi0 = self.phi_c - phi
 
 class Well:
     """
@@ -177,6 +221,7 @@ class Well:
         self.Q = Q
         self.rw = rw
         model.aem_elements.append(self)
+        model.update_phi0()
 
 
 

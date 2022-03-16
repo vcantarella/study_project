@@ -37,79 +37,19 @@ model_params.loc[3] = ['Well Pumping Rate', 0.044, 'm3/s']
 model_params.loc[4] = ['Hydraulic Gradient', 0.001, '']
 model_params.loc[5] = ['Reference Specific Baseflow', 0.12e-3*0.001*85*3600*24, 'm/d']
 
-model_params
+print(model_params);
 
 
 ```
 
-
-
-
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>parameter</th>
-      <th>value</th>
-      <th>unit</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>Hydraulic Conductivity</td>
-      <td>0.00012</td>
-      <td>m/s</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>River Reference Head</td>
-      <td>80.00000</td>
-      <td>m</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>Well Distance to the river</td>
-      <td>63.00000</td>
-      <td>m</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>Well Pumping Rate</td>
-      <td>0.04400</td>
-      <td>m3/s</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>Hydraulic Gradient</td>
-      <td>0.00100</td>
-      <td></td>
-    </tr>
-    <tr>
-      <th>5</th>
-      <td>Reference Specific Baseflow</td>
-      <td>0.88128</td>
-      <td>m/d</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-
-
+                         parameter     value  unit
+    0       Hydraulic Conductivity   0.00012   m/s
+    1         River Reference Head  80.00000     m
+    2   Well Distance to the river  63.00000     m
+    3            Well Pumping Rate   0.04400  m3/s
+    4           Hydraulic Gradient   0.00100      
+    5  Reference Specific Baseflow   0.88128   m/d
+    
 
 ## Step 1. Import the required libraries
 
@@ -136,11 +76,11 @@ This step we:
 
 aem_model = model_proposal.Model(k = 0.12e-3*3600*24, H = 85, h0 = 80)
 
-aem_model.Qo_x = -0.12e-3*3600*24*0.001*85
+aem_model.Qo_x = -0.12e-3*3600*24*85*0.001
 
 # Add well at position x = 63, y = 50 and pumping rate of 0.044 m3/s, well radius = 0.01 m
 
-well = model_proposal.Well(aem_model, Q = 0.005*3600*24, rw = 0.01, x = 63, y = 50)
+well = model_proposal.Well(aem_model, Q = 0.044*3600*24, rw = 0.1, x = 63, y = 50)
 
 # Solver for river length and river water capture fraction.
 
@@ -160,8 +100,9 @@ length, riv_coords, capture_fraction = solv.solve_river_length()
 # ys: initial particle location
 # avgtt: flow averaged time of travel
 # mintt: minimum travel time
-#traj_array: x and y location of the calculated trajectory of the particles (used for plotting) 
-tt, ys, avgtt, mintt, traj_array = solv.time_travel(0.2, delta_s = 0.4, calculate_trajectory = True)
+#traj_array: x and y location of the calculated trajectory of the particles (used for plotting)
+
+tt, ys, avgtt, mintt, traj_array = solv.time_travel(0.2, delta_s = 0.1, min_dist_est = 5, calculate_trajectory = True)
 
 print("Flow Averaged Time of Travel: "+str(np.round(avgtt,2)) + " [d]")
 print("Minimum Time of Travel: "+str(np.round(mintt,2)) + " [d]")
@@ -170,10 +111,22 @@ print("Minimum Time of Travel: "+str(np.round(mintt,2)) + " [d]")
 ```
 
     River Capture Length, Capture position and contribution to discharge is:
-    (153.11640342946325, [-26.558201714731624, 126.55820171473162], 0.24929722047129896)
-    Flow Averaged Time of Travel: 716.58 [d]
-    Minimum Time of Travel: 463.1 [d]
+    (574.5829534477441, [-237.29147672387205, 337.29147672387205], 0.7293725287026369)
+    Flow Averaged Time of Travel: 230.66 [d]
+    Minimum Time of Travel: 39.22 [d]
     
+
+
+```python
+aem_model.calc_head(63,50)
+```
+
+
+
+
+    74.68208862499516
+
+
 
 ## Step 3. Plotting the results with the plot method
 
@@ -184,14 +137,80 @@ Below there is an example on how to use the method to plot model results
 ```python
 import plot
 
-img = plot.plotting(0,100,-30,130,100,riv_coords)
+img = plot.plotting(0,200,-250,350,100,riv_coords)
 
 # The plot 2d method optionally can contain the trajectory of the sampled particles and their travel time:
-img.plot2d(aem_model, tt=tt, ys = ys, traj_array = traj_array, levels=8, quiver=False, streams=True);
+img.plot2d(aem_model, tt=None, ys = ys, traj_array = traj_array, levels=8, quiver=False, streams=True);
 ```
 
 
     
-![png](output_7_0.png)
+![png](output_8_0.png)
+    
+
+
+## Step 4. Add Clogging effect to the river
+
+Now we check the model solution if we consider a clogging layer in the river bed with lower hydraulic conductivity. This will add a head difference between the river and the aquifer underneath.
+
+
+
+```python
+## Add the clogging layer with the calc_clogging method:
+
+Kd = 1e-6*3600*24 #Hydraulic conductivity of the clogging layer (1e-6 m/s, converted to days)
+d = 0.5 #Thickness of the clogging layer [m]
+
+aem_model.calc_clogging(Kd,d)
+```
+
+Now let's see how the solutions compare with the new model:
+
+
+```python
+
+solv = solvers.river_length(aem_model)
+
+print("River Capture Length, Capture position and contribution to discharge is:")
+print(solv.solve_river_length())
+
+# Here we collect all results from the first solve method:
+#length: River capture lenght
+# riv_coords: end point coordinates of the captured length
+# capture_fraction: fraction of pumped water that is derived from the river.
+length, riv_coords, capture_fraction = solv.solve_river_length()
+
+#Here we collect all the results from the travel time method:
+#tt: travel time array of particles
+# ys: initial particle location
+# avgtt: flow averaged time of travel
+# mintt: minimum travel time
+#traj_array: x and y location of the calculated trajectory of the particles (used for plotting)
+
+tt, ys, avgtt, mintt, traj_array = solv.time_travel(0.2, delta_s = 0.1, min_dist_est = 5, calculate_trajectory = True)
+
+print("Flow Averaged Time of Travel: "+str(np.round(avgtt,2)) + " [d]")
+print("Minimum Time of Travel: "+str(np.round(mintt,2)) + " [d]")
+```
+
+    River Capture Length, Capture position and contribution to discharge is:
+    (784.2511862584051, [-342.12559312920257, 442.12559312920257], 0.6285009738785998)
+    Flow Averaged Time of Travel: 371.29 [d]
+    Minimum Time of Travel: 50.05 [d]
+    
+
+
+```python
+import plot
+
+img = plot.plotting(0,200,-350,450,100,riv_coords)
+
+# The plot 2d method optionally can contain the trajectory of the sampled particles and their travel time:
+img.plot2d(aem_model, tt=None, ys = ys, traj_array = traj_array, levels=8, quiver=False, streams=True);
+```
+
+
+    
+![png](output_13_0.png)
     
 
