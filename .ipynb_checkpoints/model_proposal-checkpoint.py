@@ -179,7 +179,7 @@ class Model:
         -------
         internal value of p
         """
-        self.p = d*self.k/Kd
+        self.p = d/Kd
         self.x = 0-self.p
         self.update_phi0()
         
